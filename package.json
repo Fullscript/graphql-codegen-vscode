@@ -18,7 +18,11 @@
   "main": "./dist/graphql-codegen-vscode.js",
   "activationEvents": [
     "onLanguage:graphql",
-    "onLanguage:GraphQL"
+    "onLanguage:GraphQL",
+    "onLanguage:typescript",
+    "onLanguage:javascript",
+    "onLanguage:typescriptreact",
+    "onLanguage:javascriptreact"
   ],
   "contributes": {
     "commands": [
