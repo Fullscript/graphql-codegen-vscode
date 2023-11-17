@@ -120,6 +120,7 @@ const getConfigPath = async () => {
 export function activate(context: vscode.ExtensionContext) {
   let cachedCtx: graphqlCodegenCli.CodegenContext | null = null
   let originalGenerates: Record<string, unknown> | null = null
+  let cachedConfigDocuments: string[] | undefined;
 
   const getCodegenContextForVSCode = async () => {
     if (cachedCtx) {
@@ -211,7 +212,22 @@ export function activate(context: vscode.ExtensionContext) {
         if (!config) {
           return
         }
+
+        // Cache configured documents so that it doesn't use the modified version after a file change
+        cachedConfigDocuments ||= [...(config.documents as string[])];
+
+        const fileInGraphqlConfiguredDocuments =
+        multimatch(
+          vscode.workspace.asRelativePath(document.fileName),
+          cachedConfigDocuments
+        ).length > 0
+
+        if (!fileInGraphqlConfiguredDocuments) {
+          return
+        }
+
         if (config.schema) {
+          // I don't understand why this would ever need to be done, causes problems with documents being overwritten from the config
           config.documents = document.fileName
         } else {
           const { generates } = config
@@ -285,19 +301,13 @@ async function runCliGenerateWithUINotifications(
 
   try {
     await cli.generate(ctx)
-
-    vscode.window.showInformationMessage(
-      `graphql codegen ${file ?? ''} successful!`
-    )
   } catch (err) {
     if (err.errors?.length) {
-      vscode.window.showErrorMessage(
-        `Codegen threw ${err.errors.length} ${
-          err.errors.length === 1 ? 'error' : 'errors'
-        }, first one: ${err.errors[0].message}`
-      )
+      vscode.window.setStatusBarMessage(`Codegen threw ${err.errors.length} ${
+        err.errors.length === 1 ? 'error' : 'errors'
+      }, first one: ${err.errors[0].message}`, 10000);
     } else {
-      vscode.window.showErrorMessage(`Codegen threw error: ${err.message}`)
+      vscode.window.setStatusBarMessage(`Codegen threw error: ${err.message}`, 10000);
     }
   }
 }
